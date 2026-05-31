@@ -29,12 +29,18 @@ pub async fn run_client(args: JoinArgs) -> Result<()> {
                 return Ok(());
             }
             Ok(SessionEnd::ServerDisconnected) => {
-                warn!("Server disconnected, reconnecting in {}s...", backoff.as_secs());
+                warn!(
+                    "Server disconnected, reconnecting in {}s...",
+                    backoff.as_secs()
+                );
                 time::sleep(backoff).await;
                 backoff = (backoff * 2).min(max_backoff);
             }
             Err(e) => {
-                warn!("Session error: {e:#}, reconnecting in {}s...", backoff.as_secs());
+                warn!(
+                    "Session error: {e:#}, reconnecting in {}s...",
+                    backoff.as_secs()
+                );
                 time::sleep(backoff).await;
                 backoff = (backoff * 2).min(max_backoff);
             }
@@ -47,10 +53,7 @@ enum SessionEnd {
     ServerDisconnected,
 }
 
-async fn run_session(
-    args: &JoinArgs,
-    mpv: &mut MpvController,
-) -> Result<SessionEnd> {
+async fn run_session(args: &JoinArgs, mpv: &mut MpvController) -> Result<SessionEnd> {
     info!("Connecting to relay server at {}", args.server);
     let (ws, _) = tokio_tungstenite::connect_async(&args.server)
         .await
@@ -70,7 +73,9 @@ async fn run_session(
         }) = serde_json::from_str(&text)
         {
             info!("Joined room {room_code} ({peer_count} peers)");
-            println!("--- Room: {room_code} | Peers: {peer_count} | Type to chat, Enter to send ---");
+            println!(
+                "--- Room: {room_code} | Peers: {peer_count} | Type to chat, Enter to send ---"
+            );
         }
     }
 
@@ -243,13 +248,8 @@ async fn handle_server_message(
                     let local_pos = mpv.get_position().await.unwrap_or(0.0);
                     let drift = (local_pos - position).abs();
                     if drift > drift_threshold {
-                        info!(
-                            "Drift correction: {drift:.2}s → seeking to {position:.1}s"
-                        );
-                        guard.suppress(
-                            "playback-time",
-                            serde_json::json!(position),
-                        );
+                        info!("Drift correction: {drift:.2}s → seeking to {position:.1}s");
+                        guard.suppress("playback-time", serde_json::json!(position));
                         let _ = mpv.seek(position).await;
                     }
                 }

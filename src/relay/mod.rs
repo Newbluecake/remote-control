@@ -30,11 +30,7 @@ pub async fn run_server(bind: &str) -> Result<()> {
     }
 }
 
-async fn handle_connection(
-    stream: TcpStream,
-    addr: SocketAddr,
-    rooms: RoomManager,
-) -> Result<()> {
+async fn handle_connection(stream: TcpStream, addr: SocketAddr, rooms: RoomManager) -> Result<()> {
     let ws = tokio_tungstenite::accept_async(stream).await?;
     let (mut ws_tx, mut ws_rx) = ws.split();
 

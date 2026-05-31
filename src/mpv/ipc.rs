@@ -25,9 +25,9 @@ pub struct MpvIpc {
 impl MpvIpc {
     #[cfg(unix)]
     pub async fn connect(path: &str) -> Result<Self> {
-        let stream = UnixStream::connect(path).await.with_context(|| {
-            format!("Failed to connect to mpv socket at {path}")
-        })?;
+        let stream = UnixStream::connect(path)
+            .await
+            .with_context(|| format!("Failed to connect to mpv socket at {path}"))?;
         let (reader, writer) = stream.into_split();
         Self::from_parts(BufReader::new(reader), writer)
     }
@@ -41,9 +41,7 @@ impl MpvIpc {
         };
         let client = tokio::net::windows::named_pipe::ClientOptions::new()
             .open(&pipe_path)
-            .with_context(|| {
-                format!("Failed to connect to mpv named pipe at {pipe_path}")
-            })?;
+            .with_context(|| format!("Failed to connect to mpv named pipe at {pipe_path}"))?;
         let (reader, writer) = tokio::io::split(client);
         Self::from_parts(BufReader::new(reader), writer)
     }
@@ -61,9 +59,7 @@ impl MpvIpc {
         // Writer task: serialize commands to the socket
         tokio::spawn(async move {
             while let Some(cmd) = cmd_rx.recv().await {
-                let _ = response_tx
-                    .send((cmd.request_id, cmd.reply))
-                    .await;
+                let _ = response_tx.send((cmd.request_id, cmd.reply)).await;
                 let line = format!("{}\n", cmd.payload);
                 if writer.write_all(line.as_bytes()).await.is_err() {
                     break;
@@ -75,8 +71,7 @@ impl MpvIpc {
         tokio::spawn(async move {
             let mut reader = reader;
             let mut line = String::new();
-            let mut pending: Vec<(u64, oneshot::Sender<Result<Value>>)> =
-                Vec::new();
+            let mut pending: Vec<(u64, oneshot::Sender<Result<Value>>)> = Vec::new();
 
             loop {
                 // Drain any newly registered pending replies
@@ -105,24 +100,16 @@ impl MpvIpc {
                     Err(_) => continue,
                 };
 
-                if let Some(rid) = parsed.get("request_id").and_then(|v| v.as_u64())
-                {
-                    if let Some(idx) =
-                        pending.iter().position(|(id, _)| *id == rid)
-                    {
+                if let Some(rid) = parsed.get("request_id").and_then(|v| v.as_u64()) {
+                    if let Some(idx) = pending.iter().position(|(id, _)| *id == rid) {
                         let (_, reply) = pending.swap_remove(idx);
-                        if let Some(err) =
-                            parsed.get("error").and_then(|e| e.as_str())
-                        {
+                        if let Some(err) = parsed.get("error").and_then(|e| e.as_str()) {
                             if err != "success" {
-                                let _ = reply.send(Err(anyhow::anyhow!(
-                                    "mpv error: {err}"
-                                )));
+                                let _ = reply.send(Err(anyhow::anyhow!("mpv error: {err}")));
                                 continue;
                             }
                         }
-                        let data =
-                            parsed.get("data").cloned().unwrap_or(Value::Null);
+                        let data = parsed.get("data").cloned().unwrap_or(Value::Null);
                         let _ = reply.send(Ok(data));
                     }
                 } else if parsed.get("event").is_some() {
@@ -162,15 +149,14 @@ impl MpvIpc {
     }
 
     pub async fn get_property(&mut self, name: &str) -> Result<Value> {
-        self.command(&[Value::String("get_property".into()), Value::String(name.into())])
-            .await
+        self.command(&[
+            Value::String("get_property".into()),
+            Value::String(name.into()),
+        ])
+        .await
     }
 
-    pub async fn set_property(
-        &mut self,
-        name: &str,
-        value: Value,
-    ) -> Result<()> {
+    pub async fn set_property(&mut self, name: &str, value: Value) -> Result<()> {
         self.command(&[
             Value::String("set_property".into()),
             Value::String(name.into()),
@@ -180,11 +166,7 @@ impl MpvIpc {
         Ok(())
     }
 
-    pub async fn observe_property(
-        &mut self,
-        id: u64,
-        name: &str,
-    ) -> Result<()> {
+    pub async fn observe_property(&mut self, id: u64, name: &str) -> Result<()> {
         self.command(&[
             Value::String("observe_property".into()),
             Value::Number(id.into()),

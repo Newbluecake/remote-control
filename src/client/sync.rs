@@ -19,9 +19,9 @@ impl SyncGuard {
     }
 
     pub fn suppress(&mut self, property: &str, value: Value) {
-        let expiry =
-            Instant::now() + std::time::Duration::from_millis(SUPPRESS_DURATION_MS);
-        self.suppressed.insert(property.to_string(), (value, expiry));
+        let expiry = Instant::now() + std::time::Duration::from_millis(SUPPRESS_DURATION_MS);
+        self.suppressed
+            .insert(property.to_string(), (value, expiry));
     }
 
     pub fn should_broadcast_pause(&mut self, paused: bool) -> bool {
@@ -55,12 +55,7 @@ impl SyncGuard {
         true
     }
 
-    fn check_float(
-        &mut self,
-        property: &str,
-        value: f64,
-        tolerance: f64,
-    ) -> bool {
+    fn check_float(&mut self, property: &str, value: f64, tolerance: f64) -> bool {
         if let Some((expected, expiry)) = self.suppressed.get(property) {
             if Instant::now() < *expiry {
                 if let Some(expected_f) = expected.as_f64() {

@@ -9,7 +9,11 @@ const fn default_mpv_socket() -> &'static str {
 }
 
 #[derive(Parser)]
-#[command(name = "remote-control", version, about = "Synchronized movie watching")]
+#[command(
+    name = "remote-control",
+    version,
+    about = "Synchronized movie watching"
+)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,

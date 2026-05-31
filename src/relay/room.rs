@@ -33,11 +33,9 @@ impl RoomManager {
         tx: mpsc::UnboundedSender<String>,
     ) -> usize {
         let mut rooms = self.rooms.lock().unwrap();
-        let room = rooms
-            .entry(room_code.to_string())
-            .or_insert_with(|| Room {
-                peers: HashMap::new(),
-            });
+        let room = rooms.entry(room_code.to_string()).or_insert_with(|| Room {
+            peers: HashMap::new(),
+        });
 
         room.peers.insert(
             addr,
