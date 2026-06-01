@@ -5,7 +5,7 @@ use futures_util::{SinkExt, StreamExt};
 use tokio::io::AsyncBufReadExt;
 use tokio::time::{self, Duration};
 use tokio_tungstenite::tungstenite::Message;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 use crate::cli::JoinArgs;
 use crate::keyboard::listener::{simulate_key, KeyAction, KeyboardBridge};
@@ -93,6 +93,8 @@ async fn run_session(args: &JoinArgs, keyboard: &mut KeyboardBridge) -> Result<S
                     Some(a) => a,
                     None => return Ok(SessionEnd::KeyboardClosed),
                 };
+
+                debug!(key = ?action.key, pressed = action.pressed, "Local key captured");
 
                 if !guard.should_broadcast(action.key, action.pressed) {
                     continue;

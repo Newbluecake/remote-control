@@ -44,9 +44,13 @@ jobs:
       - name: Package (Unix)
         if: matrix.archive == 'tar.gz'
         run: |
-          cd target/${{ matrix.target }}/release
-          tar czf ../../../remote-control-${{ github.ref_name }}-${{ matrix.target }}.tar.gz remote-control
-          cd ../../..
+          STAGING="staging-${{ matrix.target }}"
+          mkdir "$STAGING"
+          cp target/${{ matrix.target }}/release/remote-control "$STAGING/"
+          if [[ "${{ matrix.target }}" == *apple-darwin* ]]; then
+            cp scripts/sign-mac.sh "$STAGING/"
+          fi
+          tar czf remote-control-${{ github.ref_name }}-${{ matrix.target }}.tar.gz -C "$STAGING" .
 
       - name: Package (Windows)
         if: matrix.archive == 'zip'
