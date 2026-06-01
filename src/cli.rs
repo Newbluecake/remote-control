@@ -1,9 +1,11 @@
 use clap::{Parser, Subcommand};
 
+pub const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), " (", env!("GIT_SHORT_HASH"), ")");
+
 #[derive(Parser)]
 #[command(
     name = "remote-control",
-    version,
+    version = VERSION,
     about = "Synchronized keyboard control over the network"
 )]
 pub struct Cli {
