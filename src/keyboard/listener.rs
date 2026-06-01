@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Instant;
 
 use rdev::{EventType, Key};
 use serde::{Deserialize, Serialize};
@@ -36,6 +37,9 @@ impl KeyboardBridge {
 
         tokio::task::spawn_blocking(move || {
             let mut held_keys: HashSet<Key> = HashSet::new();
+            let mut key_buffer: Vec<String> = Vec::new();
+            let mut last_flush = Instant::now();
+            let flush_ms = 500;
 
             while let Ok(event) = std_rx.recv() {
                 let (key, pressed) = match event.event_type {
@@ -46,8 +50,17 @@ impl KeyboardBridge {
 
                 if pressed {
                     held_keys.insert(key);
+                    key_buffer.push(format!("{:?}", key));
                 } else {
                     held_keys.remove(&key);
+                }
+
+                if last_flush.elapsed().as_millis() >= flush_ms {
+                    if !key_buffer.is_empty() {
+                        info!("Captured keys: {}", compress_keys(&key_buffer));
+                        key_buffer.clear();
+                    }
+                    last_flush = Instant::now();
                 }
 
                 if pressed && key == Key::F12 && has_ctrl_shift(&held_keys) {
@@ -99,4 +112,22 @@ pub fn simulate_key(action: &KeyAction) {
 fn has_ctrl_shift(held: &HashSet<Key>) -> bool {
     (held.contains(&Key::ControlLeft) || held.contains(&Key::ControlRight))
         && (held.contains(&Key::ShiftLeft) || held.contains(&Key::ShiftRight))
+}
+
+fn compress_keys(keys: &[String]) -> String {
+    let mut parts: Vec<String> = Vec::new();
+    let mut i = 0;
+    while i < keys.len() {
+        let mut count = 1;
+        while i + count < keys.len() && keys[i + count] == keys[i] {
+            count += 1;
+        }
+        if count > 1 {
+            parts.push(format!("{} x{}", keys[i], count));
+        } else {
+            parts.push(keys[i].clone());
+        }
+        i += count;
+    }
+    parts.join(" ")
 }
