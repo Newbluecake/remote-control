@@ -3,6 +3,7 @@ mod client;
 mod keyboard;
 mod protocol;
 mod relay;
+mod tunnel;
 
 use clap::Parser;
 use cli::{Cli, Commands};
@@ -18,7 +19,7 @@ async fn main() {
 
     tracing::info!("remote-control v{}", cli::VERSION);
     let result = match cli.command {
-        Commands::Serve(args) => relay::run_server(&args.bind).await,
+        Commands::Serve(args) => relay::run_server(&args.bind, args.tunnel).await,
         Commands::Join(args) => client::run_client(args).await,
     };
 

@@ -26,6 +26,10 @@ pub struct ServeArgs {
     /// Address to bind the server to
     #[arg(short, long, default_value = "0.0.0.0:9090")]
     pub bind: String,
+
+    /// Create a Cloudflare Quick Tunnel to expose the server publicly (requires cloudflared)
+    #[arg(long)]
+    pub tunnel: bool,
 }
 
 #[derive(clap::Args)]

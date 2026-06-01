@@ -11,23 +11,43 @@ use tracing::{error, info};
 use self::room::RoomManager;
 use crate::protocol::RelayMessage;
 
-pub async fn run_server(bind: &str) -> Result<()> {
+pub async fn run_server(bind: &str, tunnel: bool) -> Result<()> {
     let listener = TcpListener::bind(bind)
         .await
         .with_context(|| format!("Failed to bind to {bind}"))?;
     info!("Relay server listening on {bind}");
 
+    let _tunnel = if tunnel {
+        let port = bind
+            .rsplit(':')
+            .next()
+            .and_then(|p| p.parse::<u16>().ok())
+            .unwrap_or(9090);
+        Some(crate::tunnel::CloudflareTunnel::start(port).await?)
+    } else {
+        None
+    };
+
     let rooms = RoomManager::new();
 
-    loop {
-        let (stream, addr) = listener.accept().await?;
-        let rooms = rooms.clone();
-        tokio::spawn(async move {
-            if let Err(e) = handle_connection(stream, addr, rooms).await {
-                error!(%addr, "Connection error: {e}");
-            }
-        });
+    let result = async {
+        loop {
+            let (stream, addr) = listener.accept().await?;
+            let rooms = rooms.clone();
+            tokio::spawn(async move {
+                if let Err(e) = handle_connection(stream, addr, rooms).await {
+                    error!(%addr, "Connection error: {e}");
+                }
+            });
+        }
     }
+    .await;
+
+    if let Some(t) = _tunnel {
+        t.shutdown().await;
+    }
+
+    result
 }
 
 async fn handle_connection(stream: TcpStream, addr: SocketAddr, rooms: RoomManager) -> Result<()> {
