@@ -1,6 +1,6 @@
 mod cli;
 mod client;
-mod mpv;
+mod keyboard;
 mod protocol;
 mod relay;
 

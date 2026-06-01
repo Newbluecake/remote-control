@@ -2,7 +2,7 @@
 name = "remote-control"
 version = "0.1.0"
 edition = "2021"
-description = "Synchronized movie watching — sync mpv playback with your partner over the network"
+description = "Synchronized keyboard control over the network"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
@@ -15,3 +15,4 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 anyhow = "1"
 rand = "0.9"
+rdev = { version = "0.5", features = ["serialize"] }

@@ -1,29 +1,12 @@
+use rdev::Key;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum PeerMessage {
-    SetPause {
-        paused: bool,
-        position: f64,
-        timestamp: u64,
-    },
-    Seek {
-        position: f64,
-        timestamp: u64,
-    },
-    SetSpeed {
-        speed: f64,
-        timestamp: u64,
-    },
-    SetSubTrack {
-        track_id: i64,
-        timestamp: u64,
-    },
-    Heartbeat {
-        position: f64,
-        paused: bool,
-        speed: f64,
+    KeyEvent {
+        key: Key,
+        pressed: bool,
         timestamp: u64,
     },
     Chat {

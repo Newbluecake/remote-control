@@ -1,18 +1,10 @@
 use clap::{Parser, Subcommand};
 
-const fn default_mpv_socket() -> &'static str {
-    if cfg!(windows) {
-        r"\\.\pipe\mpvsocket"
-    } else {
-        "/tmp/mpvsocket"
-    }
-}
-
 #[derive(Parser)]
 #[command(
     name = "remote-control",
     version,
-    about = "Synchronized movie watching"
+    about = "Synchronized keyboard control over the network"
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -23,7 +15,7 @@ pub struct Cli {
 pub enum Commands {
     /// Start the WebSocket relay server
     Serve(ServeArgs),
-    /// Join a room and sync with a partner
+    /// Join a room and sync keyboard events with peers
     Join(JoinArgs),
 }
 
@@ -48,11 +40,7 @@ pub struct JoinArgs {
     #[arg(short, long, default_value = "anon")]
     pub nickname: String,
 
-    /// Path to mpv IPC socket (Unix) or named pipe name (Windows)
-    #[arg(short = 's', long, default_value = default_mpv_socket())]
-    pub mpv_socket: String,
-
-    /// Drift correction threshold in seconds
-    #[arg(long, default_value = "0.5")]
-    pub drift_threshold: f64,
+    /// Start with keyboard sync disabled (toggle with Ctrl+Shift+F12)
+    #[arg(long)]
+    pub no_sync: bool,
 }
