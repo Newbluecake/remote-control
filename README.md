@@ -1,128 +1,137 @@
 # remote-control
 
-Synchronized movie watching — sync mpv playback with your partner over the network.
+跨网络键盘同步工具 — 在一台机器上按下的键会实时转发并在远程机器上模拟，适用于远程协同观影、演示等场景。
 
-Each person runs [mpv](https://mpv.io/) locally with the same video file. **remote-control** syncs playback controls (pause, seek, speed, subtitles) through a lightweight WebSocket relay server, so you watch in perfect sync without video streaming lag.
+通过轻量级 WebSocket 中继服务器转发按键事件，无需串流视频，各端本地播放即可实现同步操作。
 
-## Features
+## 功能特性
 
-- **Play/pause sync** — one person pauses, both pause
-- **Seek sync** — skip forward/backward together
-- **Speed & subtitle track sync** — change playback speed or subtitle track, synced instantly
-- **Drift correction** — automatic periodic position correction via heartbeats
-- **Anti-loop guard** — prevents command echo (no infinite feedback loops)
-- **Auto-reconnect** — exponential backoff on server disconnect, seamless recovery
-- **Room system** — simple room codes to find each other; auto-generated if not provided
-- **Terminal chat** — type messages directly in the terminal while watching
-- **Cross-platform** — Linux, macOS, Windows (Unix sockets + Windows named pipes)
-- **Single binary** — one 3MB executable acts as both server and client
+- **全局键盘同步** — 任意应用中的按键都会被捕获并转发到远程端模拟执行
+- **即开即用** — 不依赖特定播放器，适用于 mpv、PotPlayer、VLC 等任意软件
+- **同步开关** — `Ctrl+Shift+F12` 快捷键随时开启/关闭键盘同步
+- **回声抑制** — SyncGuard 机制防止按键回声导致的无限循环
+- **自动重连** — 断线后指数退避自动重连，无需手动干预
+- **房间系统** — 自动生成 4 位房间码，也可指定房间加入
+- **终端聊天** — 同步的同时可在终端直接发送文字消息
+- **按键日志** — 缓冲输出捕获到的按键，以 `Key xN` 格式合并显示
+- **跨平台** — 支持 Linux、macOS、Windows
+- **单一可执行文件** — 一个二进制文件同时充当服务端和客户端
 
-## Quick Start
+## 快速开始
 
-### Prerequisites
+### 1. 启动中继服务器
 
-- [mpv](https://mpv.io/) installed on both machines
-- Same video file on both machines
-
-### 1. Start the relay server
-
-Run on any machine reachable by both people (a VPS, or one of your own machines):
+在双方都能访问的机器上运行（VPS 或局域网内任一台机器）：
 
 ```bash
 remote-control serve
 ```
 
-Default bind: `0.0.0.0:9090`. Customize with `--bind`.
+默认监听 `0.0.0.0:9090`，可通过 `--bind` 自定义。
 
-### 2. Start mpv with IPC enabled
+### 2. 加入房间
 
-```bash
-# Linux / macOS
-mpv --input-ipc-server=/tmp/mpvsocket movie.mkv
-
-# Windows
-mpv --input-ipc-server=\\.\pipe\mpvsocket movie.mkv
-```
-
-### 3. Join a room
-
-**Person A** (creates the room):
+**用户 A**（创建房间）：
 
 ```bash
-remote-control join --server ws://your-server:9090 --nickname alice
+remote-control join --server ws://你的服务器:9090 --nickname alice
 ```
 
-The terminal prints the auto-generated room code:
+终端会输出自动生成的房间码：
 
 ```
---- Room: X7KP | Peers: 1 | Type to chat, Enter to send ---
+--- Room: X7KP | Peers: 1 | Ctrl+Shift+F12 to toggle sync | Type to chat ---
 ```
 
-**Person B** (joins with the code):
+**用户 B**（使用房间码加入）：
 
 ```bash
-remote-control join --server ws://your-server:9090 --room X7KP --nickname bob
+remote-control join --server ws://你的服务器:9090 --room X7KP --nickname bob
 ```
 
-Now any playback action on either side is synced to the other.
+现在双方的键盘操作会实时同步。
 
-## CLI Reference
+### 3. 使用场景示例
+
+双方各自打开同一部电影，加入同一房间后：
+- 一方按空格暂停，另一方也会暂停
+- 一方按方向键跳转，另一方同步跳转
+- 适用于任意播放器，不需要特殊配置
+
+## 平台说明
+
+| 平台 | 权限要求 |
+|------|----------|
+| **Windows** | 一般不需要管理员权限。如需向管理员窗口发送按键，则需以管理员身份运行 |
+| **macOS** | 需要授予「辅助功能」权限（系统设置 → 隐私与安全性 → 辅助功能）。macOS 版压缩包中附带 `sign-mac.sh` 签名脚本，运行后可精确授权 |
+| **Linux** | 需要 X11 环境，Wayland 下可能需要额外配置 |
+
+## CLI 参考
 
 ```
 remote-control <COMMAND>
 
 Commands:
-  serve    Start the WebSocket relay server
-  join     Join a room and sync with a partner
+  serve    启动 WebSocket 中继服务器
+  join     加入房间并与远程端同步
 ```
 
 ### `serve`
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `-b, --bind` | `0.0.0.0:9090` | Address to bind the server to |
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `-b, --bind` | `0.0.0.0:9090` | 服务器监听地址 |
 
 ### `join`
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `-S, --server` | `ws://localhost:9090` | WebSocket server URL |
-| `-r, --room` | *(auto-generated)* | Room code to join |
-| `-n, --nickname` | `anon` | Your display name |
-| `-s, --mpv-socket` | `/tmp/mpvsocket` | Path to mpv IPC socket |
-| `--drift-threshold` | `0.5` | Drift correction threshold (seconds) |
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `-S, --server` | `ws://localhost:9090` | WebSocket 服务器地址 |
+| `-r, --room` | *（自动生成）* | 房间码 |
+| `-n, --nickname` | `anon` | 显示名称 |
+| `--no-sync` | *（默认开启同步）* | 启动时禁用键盘同步 |
 
-## Architecture
+## 架构
 
 ```
-Person A                          Relay Server                       Person B
-┌──────────┐    WebSocket    ┌──────────────────┐    WebSocket    ┌──────────┐
-│ mpv ←IPC→ client ──────────→ room forwarding ←────────── client ←IPC→ mpv │
-└──────────┘                 └──────────────────┘                 └──────────┘
+用户 A                             中继服务器                           用户 B
+┌────────────┐    WebSocket    ┌──────────────────┐    WebSocket    ┌────────────┐
+│ 键盘 → 客户端 ──────────────→  房间转发         ←────────────── 客户端 → 键盘模拟 │
+└────────────┘                 └──────────────────┘                 └────────────┘
 ```
 
-See [docs/architecture.md](docs/architecture.md) for detailed design documentation.
+详细设计文档见 [docs/architecture.md](docs/architecture.md)。
 
-## Building from Source
+## 从源码构建
 
 ```bash
 git clone https://github.com/Newbluecake/remote-control.git
 cd remote-control
 cargo build --release
-# Binary at target/release/remote-control
+# 二进制文件位于 target/release/remote-control
 ```
 
-## Documentation
+### 交叉编译
 
-| Document | Description |
-|----------|-------------|
-| [Getting Started](docs/getting-started.md) | Detailed setup guide |
-| [Architecture](docs/architecture.md) | System design and protocol spec |
-| [Development](docs/development.md) | Contributing and development guide |
-| [Deployment](docs/deployment.md) | Server deployment guide |
-| [CONTRIBUTING](CONTRIBUTING.md) | Contribution guidelines |
-| [CHANGELOG](CHANGELOG.md) | Version history |
+```bash
+# Windows (需要 mingw 工具链)
+rustup target add x86_64-pc-windows-gnu
+cargo build --release --target x86_64-pc-windows-gnu
 
-## License
+# macOS (需要在 macOS 上编译)
+cargo build --release --target aarch64-apple-darwin
+```
+
+## 文档
+
+| 文档 | 说明 |
+|------|------|
+| [快速上手](docs/getting-started.md) | 详细安装指南 |
+| [架构设计](docs/architecture.md) | 系统设计与协议规范 |
+| [开发指南](docs/development.md) | 参与开发 |
+| [部署指南](docs/deployment.md) | 服务器部署 |
+| [CHANGELOG](CHANGELOG.md) | 版本历史 |
+
+## 许可证
 
 MIT
