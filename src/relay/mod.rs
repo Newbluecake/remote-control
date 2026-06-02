@@ -4,12 +4,13 @@ use anyhow::{Context, Result};
 use futures_util::{SinkExt, StreamExt};
 use rand::Rng;
 use std::net::SocketAddr;
+use std::time::Duration;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::tungstenite::Message;
 use tracing::{error, info};
 
 use self::room::RoomManager;
-use crate::protocol::RelayMessage;
+use crate::protocol::{PeerMessage, RelayMessage};
 
 pub async fn run_server(bind: &str, tunnel: bool) -> Result<()> {
     let listener = TcpListener::bind(bind)
@@ -101,6 +102,10 @@ async fn handle_connection(stream: TcpStream, addr: SocketAddr, rooms: RoomManag
 
     info!(%addr, %nickname, %room_code, "Joined room ({peer_count} peers)");
 
+    let mut key_buffer: Vec<String> = Vec::new();
+    let mut flush_interval = tokio::time::interval(Duration::from_millis(500));
+    flush_interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+
     loop {
         tokio::select! {
             // Messages from this client -> forward to other peers
@@ -112,6 +117,10 @@ async fn handle_connection(stream: TcpStream, addr: SocketAddr, rooms: RoomManag
 
                 if let Message::Text(text) = msg {
                     if let Ok(RelayMessage::Peer { message, .. }) = serde_json::from_str::<RelayMessage>(&text) {
+                        if let PeerMessage::KeyEvent { key, pressed, .. } = &message {
+                            let action = if *pressed { "press" } else { "release" };
+                            key_buffer.push(format!("{} {action} {key:?}", nickname));
+                        }
                         let forwarded = serde_json::to_string(&RelayMessage::Peer {
                             from: nickname.clone(),
                             message,
@@ -131,7 +140,18 @@ async fn handle_connection(stream: TcpStream, addr: SocketAddr, rooms: RoomManag
                     None => break,
                 }
             }
+            // Flush key buffer periodically
+            _ = flush_interval.tick() => {
+                if !key_buffer.is_empty() {
+                    info!("[room {room_code}] {}", compress_key_logs(&key_buffer));
+                    key_buffer.clear();
+                }
+            }
         }
+    }
+
+    if !key_buffer.is_empty() {
+        info!("[room {room_code}] {}", compress_key_logs(&key_buffer));
     }
 
     rooms.leave(&room_code, addr);
@@ -153,4 +173,22 @@ fn generate_room_code() -> String {
     (0..4)
         .map(|_| CHARSET[rng.random_range(0..CHARSET.len())] as char)
         .collect()
+}
+
+fn compress_key_logs(entries: &[String]) -> String {
+    let mut parts: Vec<String> = Vec::new();
+    let mut i = 0;
+    while i < entries.len() {
+        let mut count = 1;
+        while i + count < entries.len() && entries[i + count] == entries[i] {
+            count += 1;
+        }
+        if count > 1 {
+            parts.push(format!("{} x{count}", entries[i]));
+        } else {
+            parts.push(entries[i].clone());
+        }
+        i += count;
+    }
+    parts.join(", ")
 }
