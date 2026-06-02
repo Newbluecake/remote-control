@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.3.0] - 2026-06-02
+
+### Added
+
+- Batched key event logging to relay server with periodic flush ([55e45a1](https://github.com/Newbluecake/remote-control/commit/55e45a1))
+- `--tunnel` flag to create Cloudflare Quick Tunnel on `serve` ([43a5680](https://github.com/Newbluecake/remote-control/commit/43a5680))
+- Makefile with build, test, lint, and cross-compile targets ([725a94b](https://github.com/Newbluecake/remote-control/commit/725a94b))
+
+### Fixed
+
+- TLS support for `wss://` connections ([f3923d8](https://github.com/Newbluecake/remote-control/commit/f3923d8))
+- Ring crypto provider for rustls TLS backend ([646c90a](https://github.com/Newbluecake/remote-control/commit/646c90a))
+
+### Changed
+
+- README rewritten in Chinese for v0.2.0 ([96512ce](https://github.com/Newbluecake/remote-control/commit/96512ce))
+
+Stats: 2 feat, 2 fix, 1 chore, 1 docs
+
 ## [0.2.0] - 2026-06-01
 
 ### Added
